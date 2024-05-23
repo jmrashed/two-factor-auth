@@ -269,6 +269,6 @@ Thank you for your contributions! Together, we can make this package even better
 
 Explore our comprehensive documentation to learn more about using the Two-Factor Authentication package:
 
-- **[Documentation](https://github.com/jmrashed/two-factor-auth/docs)**: Access detailed guides, tutorials, and API references to understand how to integrate and utilize the Two-Factor Authentication package effectively.
+- **[Documentation](https://github.com/jmrashed/two-factor-auth/blob/main/docs.md)**: Access detailed guides, tutorials, and API references to understand how to integrate and utilize the Two-Factor Authentication package effectively.
 
 Our documentation is continually updated to provide you with the latest information and best practices. If you have any questions or need further assistance, don't hesitate to reach out or open an issue on GitHub. We're here to help you succeed with your authentication needs.
