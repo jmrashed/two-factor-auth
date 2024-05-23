@@ -1,0 +1,224 @@
+<?php
+
+/**
+ * @author [jmrashed]
+ * @email [jmrashed@mail.com]
+ * @create date 2024-05-23 13:59:42
+ * @modify date 2024-05-23 13:59:42
+ * @desc [ two-factor ]
+ */
+namespace Jmrashed\TwoFactorAuth;
+
+use Illuminate\Auth\AuthManager;
+use Illuminate\Auth\SessionGuard;
+use Illuminate\Contracts\Session\Session;
+use Illuminate\Http\Exceptions\HttpResponseException;
+use Illuminate\Http\Request;
+use Illuminate\Session\EncryptedStore;
+use Illuminate\Support\Arr;
+use Illuminate\Support\Facades\Crypt;
+use InvalidArgumentException;
+use Jmrashed\TwoFactorAuth\Exceptions\InvalidCodeException;
+
+use function array_merge;
+use function redirect;
+use function response;
+use function view;
+
+class TwoFactorLoginHelper
+{
+    /**
+     * Create a new Two-Factor Login Helper instance.
+     */
+    public function __construct(
+        protected AuthManager $auth,
+        protected Session $session,
+        protected Request $request,
+        protected string $view,
+        protected string $sessionKey,
+        protected bool $useFlash,
+        protected string $input = '2fa_code',
+        protected ?string $guard = null,
+        protected ?string $message = null,
+        protected string $redirect = '',
+    ) {
+        //
+    }
+
+    /**
+     * Return a custom view to handle the 2FA Code retry.
+     *
+     * @return $this
+     */
+    public function view(string $view): static
+    {
+        $this->view = $view;
+
+        return $this;
+    }
+
+    /**
+     * Return a custom view to handle the 2FA Code retry.
+     *
+     * @return $this
+     */
+    public function message(string $message): static
+    {
+        $this->message = $message;
+
+        return $this;
+    }
+
+    /**
+     * Sets the input where the TOTP code is in the credentials array. Defaults to `2fa_code`.
+     *
+     * @return $this
+     */
+    public function input(string $input): static
+    {
+        $this->input = $input;
+
+        return $this;
+    }
+
+    /**
+     *  The key used to flash the encrypted credentials.
+     *
+     * @return $this
+     */
+    public function sessionKey(string $sessionKey): static
+    {
+        $this->sessionKey = $sessionKey;
+
+        return $this;
+    }
+
+    /**
+     * Set the guard to use for authentication.
+     *
+     * @return $this
+     */
+    public function guard(string $guard): static
+    {
+        $this->guard = $guard;
+
+        return $this;
+    }
+
+    /**
+     * Set the route to redirect the user on failed authentication.
+     *
+     * @return $this
+     */
+    public function redirect(string $route): static
+    {
+        $this->redirect = $route;
+
+        return $this;
+    }
+
+    /**
+     * Attempt to authenticate a user using the given credentials.
+     */
+    public function attempt(array $credentials = [], $remember = false): bool
+    {
+        return $this->attemptWhen($credentials, null, $remember);
+    }
+
+    /**
+     * Attempt to authenticate a user with credentials and additional callbacks.
+     *
+     * @param  array|callable|null  $callbacks
+     * @param  bool  $remember
+     */
+    public function attemptWhen(array $credentials = [], $callbacks = null, $remember = false): bool
+    {
+        $guard = $this->getSessionGuard();
+
+        // Always try to get the existing credentials, and merge them with the new.
+        [$credentials, $remember] = $this->getFlashedData($credentials, $remember);
+
+        // Try to authenticate the user with the credentials. If these are wrong
+        // it will return false but, if the credentials are valid, we can catch
+        // a custom exception to know if the 2FA Code was the one that failed.
+        try {
+            return $guard->attemptWhen(
+                $credentials, array_merge(Arr::wrap($callbacks), [TwoFactor::hasCodeOrFails($this->input, $this->message)]), $remember
+            );
+        } catch (InvalidCodeException $e) {
+            $this->flashData($credentials, $remember);
+
+            $this->throwResponse($this->input, $this->request->has($this->input) ? $e->errors() : []);
+        }
+    }
+
+    /**
+     * Return the Session Guard of Laravel.
+     */
+    protected function getSessionGuard(): SessionGuard
+    {
+        $guard = $this->auth->guard($this->guard);
+
+        if (! $guard instanceof SessionGuard) {
+            throw new InvalidArgumentException('The authentication guard must be a instance of SessionGuard.');
+        }
+
+        return $guard;
+    }
+
+    /**
+     * Retrieve the flashed credentials in the session, and merges with the new on top.
+     *
+     * @param  array{credentials:array, remember:bool}  $credentials
+     */
+    protected function getFlashedData(array $credentials, mixed $remember): array
+    {
+        $original = $this->session->pull("$this->sessionKey.credentials", []);
+        $remember = $this->session->pull("$this->sessionKey.remember", $remember);
+
+        // If the session is not encrypted, we will need to decrypt the credentials manually.
+        if (! $this->session instanceof EncryptedStore) {
+            foreach ($original as $index => $value) {
+                $original[$index] = Crypt::decryptString($value);
+            }
+        }
+
+        return [array_merge($original, $credentials), $remember];
+    }
+
+    /**
+     * Flashes the credentials into the session, encrypted.
+     */
+    protected function flashData(array $credentials, bool $remember): void
+    {
+        // Don't encrypt the credentials twice.
+        if (! $this->session instanceof EncryptedStore) {
+            foreach ($credentials as $key => $value) {
+                $credentials[$key] = Crypt::encryptString($value);
+            }
+        }
+
+        // If the developer has set the login helper to use flash, we will use that.
+        // It may disable this, which in turn will use put. This wil fix some apps
+        // like Livewire or Inertia, but it may keep this request input forever.
+        if ($this->useFlash) {
+            // @phpstan-ignore-next-line
+            $this->session->flash($this->sessionKey, ['credentials' => $credentials, 'remember' => $remember]);
+        } else {
+            $this->session->put($this->sessionKey, ['credentials' => $credentials, 'remember' => $remember]);
+        }
+    }
+
+    /**
+     * Throw a response with an invalid TOTP code.
+     */
+    protected function throwResponse(string $input, array $errors): never
+    {
+        $response = $this->redirect
+            ? redirect($this->redirect)->withInput(['input' => $input])->withErrors($errors)
+            // @phpstan-ignore-next-line
+            : response(view($this->view, ['input' => $input])->withErrors($errors));
+
+        throw new HttpResponseException($response);
+    }
+}

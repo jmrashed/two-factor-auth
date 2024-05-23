@@ -115,8 +115,8 @@ Integrate the `Two-Factor Authentication` features into your User model or any o
 namespace App;
 
 use Illuminate\Foundation\Auth\User as Authenticatable;
-use Laragear\TwoFactor\TwoFactorAuthentication;
-use Laragear\TwoFactor\Contracts\TwoFactorAuthenticatable;
+use Jmrashed\TwoFactorAuth\TwoFactorAuthentication;
+use Jmrashed\TwoFactorAuth\Contracts\TwoFactorAuthenticatable;
 
 class User extends Authenticatable implements TwoFactorAuthenticatable
 {
@@ -218,7 +218,7 @@ For seamless user authentication, utilize the `Auth2FA` facade provided by the p
 In your Login Controller, employ the `Auth2FA::attempt()` method with the user's credentials. If Two-Factor Authentication is required, the user will be prompted to enter their 2FA Code.
 
 ```php
-use Laragear\TwoFactor\Facades\Auth2FA;
+use Jmrashed\TwoFactorAuth\Facades\Auth2FA;
 use Illuminate\Http\Request;
 
 public function login(Request $request)
@@ -233,3 +233,42 @@ public function login(Request $request)
 ```
 
 This package enables TOTP authentication using 6 digits codes. No need for external APIs.
+
+## Authors
+
+This package is maintained by [jmrashed](https://www.github.com/jmrashed), a passionate developer dedicated to enhancing Laravel development experiences.
+
+Feel free to contribute or report issues on [GitHub](https://www.github.com/jmrashed/two-factor-auth). Your feedback and contributions are highly appreciated!
+
+## Contributing
+
+We welcome contributions from everyone! Whether you're fixing a typo, adding a feature, or suggesting improvements, your contributions are valued and appreciated.
+
+### Follow these guidelines
+
+If you're new to contributing to open-source projects, don't worry! Here's how you can get started:
+
+1. Fork the repository.
+2. Clone your forked repository to your local machine.
+3. Create a new branch for your changes.
+4. Make your changes and commit them with clear and descriptive messages.
+5. Push your changes to your forked repository.
+6. Submit a pull request to the main repository.
+
+### Code of Conduct
+
+Please note that we have a [Code of Conduct](CODE_OF_CONDUCT.md) in place to ensure a welcoming and inclusive environment for everyone. By participating in this project, you agree to abide by its terms.
+
+### Feedback
+
+Your feedback is crucial for the improvement of this package. If you encounter any issues, have ideas for new features, or simply want to share your thoughts, please open an issue on GitHub.
+
+Thank you for your contributions! Together, we can make this package even better.
+
+## Documentation
+
+Explore our comprehensive documentation to learn more about using the Two-Factor Authentication package:
+
+- **[Documentation](https://github.com/jmrashed/two-factor-auth/docs)**: Access detailed guides, tutorials, and API references to understand how to integrate and utilize the Two-Factor Authentication package effectively.
+
+Our documentation is continually updated to provide you with the latest information and best practices. If you have any questions or need further assistance, don't hesitate to reach out or open an issue on GitHub. We're here to help you succeed with your authentication needs.
