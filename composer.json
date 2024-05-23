@@ -1,6 +1,6 @@
 {
     "name": "jmrashed/two-factor-auth",
-    "description": "On-premises 2FA Authentication for out-of-the-box.",
+    "description": "Enhance your Laravel application's security with the Laravel Two-Factor Authentication (2FA) package",
     "type": "library",
     "license": "MIT",
     "minimum-stability": "dev",
@@ -10,7 +10,9 @@
         "authentication",
         "2fa",
         "two-factor",
-        "authentication"
+        "authentication",
+        "laravel 11",
+        "stable"
     ],
     "authors": [
         {
