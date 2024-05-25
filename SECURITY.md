@@ -43,6 +43,6 @@ We aim to handle all security issues as quickly as possible. Once a fix is devel
 2. Update the `CHANGELOG.md` file with information about the fix.
 3. Mention the vulnerability in the release notes for the new version.
 
-We appreciate your effort to help us maintain the security and integrity of our package. If you have any questions about our security process, feel free to contact us at `security@yourdomain.com`.
+We appreciate your effort to help us maintain the security and integrity of our package. If you have any questions about our security process, feel free to contact us at `jmrashed@gmail.com`.
 
 Thank you for contributing to the security of the Laravel Two-Factor Authentication (2FA) package!
