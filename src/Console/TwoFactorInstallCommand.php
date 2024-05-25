@@ -17,7 +17,6 @@ use Symfony\Component\Console\Attribute\AsCommand;
 /**
  * @internal
  */
-// #[AsCommand(name: 'two-factor:install')]
 class TwoFactorInstallCommand extends Command
 {
     /**
@@ -25,7 +24,7 @@ class TwoFactorInstallCommand extends Command
      *
      * @var string
      */
-    protected $signature = 'two-factor:install {--force : Overwrite any existing files}';
+    protected $signature = 'two-factor-auth:install {--force : Overwrite any existing files}';
 
     /**
      * The console command description.
