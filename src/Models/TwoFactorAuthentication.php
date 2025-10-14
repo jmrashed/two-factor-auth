@@ -69,6 +69,8 @@ class TwoFactorAuthentication extends Model implements TwoFactorTotp
         'safe_devices' => 'collection',
         'enabled_at' => 'datetime',
         'recovery_codes_generated_at' => 'datetime',
+        'phone_number_verified_at' => 'datetime',
+        'email_2fa_enabled' => 'boolean',
     ];
 
     /**
@@ -76,7 +78,10 @@ class TwoFactorAuthentication extends Model implements TwoFactorTotp
      *
      * @var array<int, string>
      */
-    protected $fillable = ['digits', 'seconds', 'window', 'algorithm'];
+    protected $fillable = [
+        'digits', 'seconds', 'window', 'algorithm', 'method',
+        'phone_number', 'email_2fa_enabled'
+    ];
 
     /**
      * @inheritDoc

@@ -12,6 +12,7 @@ namespace Jmrashed\TwoFactorAuth;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Str;
 use Laragear\Meta\BootHelpers;
@@ -64,6 +65,13 @@ class TwoFactorServiceProvider extends ServiceProvider
                 return $app->make('translator')->get('two-factor::validation.totp_code');
             }
         );
+
+        Route::group(['middleware' => ['web', 'auth']], function () {
+            Route::get('/two-factor-settings', [Http\Controllers\TwoFactorSettingsController::class, 'showSettings'])
+                ->name('two-factor.settings');
+            Route::put('/two-factor-settings', [Http\Controllers\TwoFactorSettingsController::class, 'updateSettings'])
+                ->name('two-factor.settings.update');
+        });
 
         if ($this->app->runningInConsole()) {
             $this->publishFiles();

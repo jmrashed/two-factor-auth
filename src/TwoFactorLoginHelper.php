@@ -19,6 +19,7 @@ use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Crypt;
 use InvalidArgumentException;
 use Jmrashed\TwoFactorAuth\Exceptions\InvalidCodeException;
+use function config;
 
 use function array_merge;
 use function redirect;
@@ -148,7 +149,26 @@ class TwoFactorLoginHelper
         } catch (InvalidCodeException $e) {
             $this->flashData($credentials, $remember);
 
-            $this->throwResponse($this->input, $this->request->has($this->input) ? $e->errors() : []);
+            $twoFactorMethod = $this->request->input('two_factor_method', 'totp');
+            $this->session->put('two_factor_method', $twoFactorMethod);
+
+            if ($twoFactorMethod === 'sms' && $this->request->input('action') === 'send_sms_code') {
+                $user = $guard->getLastAttempted();
+                if ($user && $user->sendSmsCode()) {
+                    session()->flash('status', trans('two-factor::messages.sms_code_sent'));
+                } else {
+                    session()->flash('error', trans('two-factor::messages.sms_send_failed'));
+                }
+            } elseif ($twoFactorMethod === 'email' && $this->request->input('action') === 'send_email_code') {
+                $user = $guard->getLastAttempted();
+                if ($user && $user->sendEmailCode()) {
+                    session()->flash('status', trans('two-factor::messages.email_code_sent'));
+                } else {
+                    session()->flash('error', trans('two-factor::messages.email_send_failed'));
+                }
+            }
+
+            $this->throwResponse($this->input, $this->request->has($this->input) ? $e->errors() : [], $twoFactorMethod);
         }
     }
 
@@ -212,12 +232,12 @@ class TwoFactorLoginHelper
     /**
      * Throw a response with an invalid TOTP code.
      */
-    protected function throwResponse(string $input, array $errors): never
+    protected function throwResponse(string $input, array $errors, string $twoFactorMethod = 'totp'): never
     {
         $response = $this->redirect
-            ? redirect($this->redirect)->withInput(['input' => $input])->withErrors($errors)
+            ? redirect($this->redirect)->withInput(['input' => $input, 'two_factor_method' => $twoFactorMethod])->withErrors($errors)
             // @phpstan-ignore-next-line
-            : response(view($this->view, ['input' => $input])->withErrors($errors));
+            : response(view($this->view, ['input' => $input, 'twoFactorMethod' => $twoFactorMethod])->withErrors($errors));
 
         throw new HttpResponseException($response);
     }

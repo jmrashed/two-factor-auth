@@ -34,19 +34,64 @@ class ConfirmTwoFactorCodeController extends Controller
     }
 
     /**
-     * Display the TOTP code confirmation view.
+     * Display the 2FA code confirmation view.
      */
-    public function form(): Response
+    public function form(Request $request): Response
     {
-        return response()->view('two-factor::confirm');
+        $user = $request->user();
+        $method = $user->getTwoFactorMethod();
+        
+        return response()->view('two-factor::confirm', compact('method'));
     }
 
     /**
-     * Confirm the given user's TOTP code.
+     * Send 2FA code via current method.
+     */
+    public function sendCode(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        $method = $user->getTwoFactorMethod();
+        
+        $sent = match ($method) {
+            'sms' => $user->sendSmsCode(),
+            'email' => $user->sendEmailCode(),
+            default => false,
+        };
+
+        if ($sent) {
+            return response()->json(['message' => '2FA code sent successfully']);
+        }
+
+        return response()->json(['error' => 'Failed to send 2FA code'], 500);
+    }
+
+    /**
+     * Confirm the given user's 2FA code (TOTP, SMS, or Email).
      */
     public function confirm(Request $request, ConfigContract $config): RedirectResponse|JsonResponse
     {
-        $request->validate(['2fa_code' => 'required|totp']);
+        $user = $request->user();
+        $method = $user->getTwoFactorMethod();
+        
+        $request->validate([
+            '2fa_code' => 'required|string',
+            'method' => 'sometimes|string|in:totp,sms,email'
+        ]);
+
+        $code = $request->input('2fa_code');
+        $requestedMethod = $request->input('method', $method);
+        
+        $isValid = match ($requestedMethod) {
+            'totp' => $user->validateTwoFactorCode($code),
+            'sms', 'email' => $user->validateAlternativeTwoFactorCode($code, $requestedMethod),
+            default => false,
+        };
+
+        if (!$isValid) {
+            return $request->wantsJson()
+                ? response()->json(['error' => 'Invalid 2FA code'], 422)
+                : back()->withErrors(['2fa_code' => 'Invalid 2FA code']);
+        }
 
         $this->extendTotpConfirmationTimeout($request, $config);
 

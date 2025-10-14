@@ -13,6 +13,10 @@ use DateTimeInterface;
 use Illuminate\Database\Eloquent\Relations\MorphOne;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Str;
 use InvalidArgumentException;
 
 use function collect;
@@ -20,6 +24,8 @@ use function config;
 use function cookie;
 use function event;
 use function now;
+use function rand;
+use function app;
 
 /**
  * @property-read \Jmrashed\TwoFactorAuth\Models\TwoFactorAuthentication $twoFactorAuth
@@ -32,6 +38,13 @@ trait TwoFactorAuthentication
      * @var bool
      */
     public bool $wasTwoFactorRecentlyBypassedUnderSafeDevice = false;
+
+    /**
+     * The currently active two-factor method.
+     *
+     * @var string|null
+     */
+    public ?string $twoFactorMethod = null;
 
     /**
      * Initialize the current Trait.
@@ -326,5 +339,268 @@ trait TwoFactorAuthentication
     public function wasTwoFactorBypassedBySafeDevice(): bool
     {
         return $this->wasTwoFactorRecentlyBypassedUnderSafeDevice;
+    }
+
+    /**
+     * Set the preferred 2FA method for the user.
+     */
+    public function setTwoFactorMethod(string $method): void
+    {
+        $this->twoFactorAuth->method = $method;
+        $this->twoFactorAuth->save();
+    }
+
+    /**
+     * Get the user's preferred 2FA method.
+     */
+    public function getTwoFactorMethod(): string
+    {
+        return $this->twoFactorAuth->method ?? 'totp';
+    }
+
+    /**
+     * Set and verify the user's phone number for SMS 2FA.
+     */
+    public function setPhoneNumber(string $phoneNumber): void
+    {
+        $this->twoFactorAuth->phone_number = $phoneNumber;
+        $this->twoFactorAuth->phone_number_verified_at = null;
+        $this->twoFactorAuth->save();
+    }
+
+    /**
+     * Verify the user's phone number.
+     */
+    public function verifyPhoneNumber(): void
+    {
+        $this->twoFactorAuth->phone_number_verified_at = now();
+        $this->twoFactorAuth->save();
+    }
+
+    /**
+     * Check if phone number is verified.
+     */
+    public function isPhoneNumberVerified(): bool
+    {
+        return $this->twoFactorAuth->phone_number_verified_at !== null;
+    }
+
+    /**
+     * Enable email-based 2FA.
+     */
+    public function enableEmailTwoFactor(): void
+    {
+        $this->twoFactorAuth->email_2fa_enabled = true;
+        $this->twoFactorAuth->save();
+    }
+
+    /**
+     * Disable email-based 2FA.
+     */
+    public function disableEmailTwoFactor(): void
+    {
+        $this->twoFactorAuth->email_2fa_enabled = false;
+        $this->twoFactorAuth->email_2fa_code = null;
+        $this->twoFactorAuth->save();
+    }
+
+    /**
+     * Check if email 2FA is enabled.
+     */
+    public function isEmailTwoFactorEnabled(): bool
+    {
+        return $this->twoFactorAuth->email_2fa_enabled ?? false;
+    }
+
+    /**
+     * Generate and send SMS 2FA code.
+     */
+    public function sendSmsCode(): bool
+    {
+        if (!config('two-factor.sms.enabled') || !$this->twoFactorAuth->phone_number) {
+            return false;
+        }
+
+        $code = $this->generateTwoFactorCode('sms');
+        $cacheKey = "2fa_sms_{$this->getKey()}";
+        
+        Cache::put($cacheKey, $code, now()->addMinutes(config('two-factor.sms.code_lifetime', 10)));
+
+        return $this->sendSmsViaProvider($this->twoFactorAuth->phone_number, $code);
+    }
+
+    /**
+     * Generate and send email 2FA code.
+     */
+    public function sendEmailCode(): bool
+    {
+        if (!config('two-factor.email.enabled') || !$this->isEmailTwoFactorEnabled()) {
+            return false;
+        }
+
+        $code = $this->generateTwoFactorCode('email');
+        $this->twoFactorAuth->email_2fa_code = $code;
+        $this->twoFactorAuth->save();
+
+        return $this->sendEmailViaProvider($this->getTwoFactorUserIdentifier(), $code);
+    }
+
+    /**
+     * Validate SMS or Email 2FA code.
+     */
+    public function validateAlternativeTwoFactorCode(string $code, string $method): bool
+    {
+        if ($method === 'sms') {
+            return $this->validateSmsCode($code);
+        }
+
+        if ($method === 'email') {
+            return $this->validateEmailCode($code);
+        }
+
+        return false;
+    }
+
+    /**
+     * Generate a 2FA code for SMS or Email.
+     */
+    protected function generateTwoFactorCode(string $method): string
+    {
+        $length = $method === 'sms' 
+            ? config('two-factor.sms.code_length', 6)
+            : config('two-factor.email.code_length', 6);
+
+        return str_pad(rand(0, pow(10, $length) - 1), $length, '0', STR_PAD_LEFT);
+    }
+
+    /**
+     * Validate SMS code.
+     */
+    protected function validateSmsCode(string $code): bool
+    {
+        $cacheKey = "2fa_sms_{$this->getKey()}";
+        $cachedCode = Cache::get($cacheKey);
+
+        if ($cachedCode && $cachedCode === $code) {
+            Cache::forget($cacheKey);
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Validate email code.
+     */
+    protected function validateEmailCode(string $code): bool
+    {
+        if ($this->twoFactorAuth->email_2fa_code === $code) {
+            $this->twoFactorAuth->email_2fa_code = null;
+            $this->twoFactorAuth->save();
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Send SMS via configured provider.
+     */
+    protected function sendSmsViaProvider(string $phoneNumber, string $code): bool
+    {
+        $provider = config('two-factor.sms.default_provider');
+
+        if ($provider === 'twilio') {
+            return $this->sendSmsViaTwilio($phoneNumber, $code);
+        }
+
+        return false;
+    }
+
+    /**
+     * Send SMS via Twilio.
+     */
+    protected function sendSmsViaTwilio(string $phoneNumber, string $code): bool
+    {
+        $config = config('two-factor.sms.providers.twilio');
+        
+        if (!$config['sid'] || !$config['token'] || !$config['from']) {
+            return false;
+        }
+
+        try {
+            $response = Http::withBasicAuth($config['sid'], $config['token'])
+                ->asForm()
+                ->post("https://api.twilio.com/2010-04-01/Accounts/{$config['sid']}/Messages.json", [
+                    'From' => $config['from'],
+                    'To' => $phoneNumber,
+                    'Body' => "Your 2FA code is: {$code}"
+                ]);
+
+            return $response->successful();
+        } catch (\Exception $e) {
+            return false;
+        }
+    }
+
+    /**
+     * Send email via configured provider.
+     */
+    protected function sendEmailViaProvider(string $email, string $code): bool
+    {
+        $provider = config('two-factor.email.default_provider');
+
+        if ($provider === 'smtp') {
+            return $this->sendEmailViaSmtp($email, $code);
+        }
+
+        if ($provider === 'mailgun') {
+            return $this->sendEmailViaMailgun($email, $code);
+        }
+
+        return false;
+    }
+
+    /**
+     * Send email via SMTP (Laravel Mail).
+     */
+    protected function sendEmailViaSmtp(string $email, string $code): bool
+    {
+        try {
+            Mail::raw("Your 2FA code is: {$code}", function ($message) use ($email) {
+                $message->to($email)
+                    ->subject('Two-Factor Authentication Code');
+            });
+            return true;
+        } catch (\Exception $e) {
+            return false;
+        }
+    }
+
+    /**
+     * Send email via Mailgun.
+     */
+    protected function sendEmailViaMailgun(string $email, string $code): bool
+    {
+        $config = config('two-factor.email.providers.mailgun');
+        
+        if (!$config['domain'] || !$config['secret']) {
+            return false;
+        }
+
+        try {
+            $response = Http::withBasicAuth('api', $config['secret'])
+                ->asForm()
+                ->post("https://api.mailgun.net/v3/{$config['domain']}/messages", [
+                    'from' => "noreply@{$config['domain']}",
+                    'to' => $email,
+                    'subject' => 'Two-Factor Authentication Code',
+                    'text' => "Your 2FA code is: {$code}"
+                ]);
+
+            return $response->successful();
+        } catch (\Exception $e) {
+            return false;
+        }
     }
 }

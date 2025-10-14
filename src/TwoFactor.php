@@ -84,12 +84,26 @@ class TwoFactor
         }
 
         // If the code is valid, return true only after we try to save the safe device.
-        if ($this->requestHasCode() && $user->validateTwoFactorCode($this->getCode())) {
-            if ($this->isSafeDevicesEnabled() && $this->wantsToAddDevice()) {
-                $user->addSafeDevice($this->request);
+        if ($this->requestHasCode()) {
+            $code = $this->getCode();
+            $method = $this->request->input('two_factor_method', $user->getTwoFactorMethod());
+
+            $isValid = false;
+            if ($method === 'sms') {
+                $isValid = $user->validateAlternativeTwoFactorCode($code, 'sms');
+            } elseif ($method === 'email') {
+                $isValid = $user->validateAlternativeTwoFactorCode($code, 'email');
+            } else {
+                // Default to TOTP
+                $isValid = $user->validateTwoFactorCode($code);
             }
 
-            return true;
+            if ($isValid) {
+                if ($this->isSafeDevicesEnabled() && $this->wantsToAddDevice()) {
+                    $user->addSafeDevice($this->request);
+                }
+                return true;
+            }
         }
 
         return false;

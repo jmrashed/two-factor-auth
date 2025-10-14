@@ -84,4 +84,59 @@ interface TwoFactorAuthenticatable
      * Determines if a recent Two-Factor challenge has been bypassed under a Safe Device.
      */
     public function wasTwoFactorBypassedBySafeDevice(): bool;
+
+    /**
+     * Set the preferred 2FA method for the user.
+     */
+    public function setTwoFactorMethod(string $method): void;
+
+    /**
+     * Get the user's preferred 2FA method.
+     */
+    public function getTwoFactorMethod(): string;
+
+    /**
+     * Set and verify the user's phone number for SMS 2FA.
+     */
+    public function setPhoneNumber(string $phoneNumber): void;
+
+    /**
+     * Verify the user's phone number.
+     */
+    public function verifyPhoneNumber(): void;
+
+    /**
+     * Check if phone number is verified.
+     */
+    public function isPhoneNumberVerified(): bool;
+
+    /**
+     * Enable email-based 2FA.
+     */
+    public function enableEmailTwoFactor(): void;
+
+    /**
+     * Disable email-based 2FA.
+     */
+    public function disableEmailTwoFactor(): void;
+
+    /**
+     * Check if email 2FA is enabled.
+     */
+    public function isEmailTwoFactorEnabled(): bool;
+
+    /**
+     * Generate and send SMS 2FA code.
+     */
+    public function sendSmsCode(): bool;
+
+    /**
+     * Generate and send email 2FA code.
+     */
+    public function sendEmailCode(): bool;
+
+    /**
+     * Validate SMS or Email 2FA code.
+     */
+    public function validateAlternativeTwoFactorCode(string $code, string $method): bool;
 }

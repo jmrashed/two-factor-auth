@@ -149,4 +149,60 @@ return [
         'size' => 400,
         'margin' => 4,
     ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | SMS Two-Factor Authentication
+    |--------------------------------------------------------------------------
+    |
+    | This configuration allows you to enable and configure SMS-based two-factor
+    | authentication. You can specify the default SMS provider and its settings.
+    |
+    */
+
+    'sms' => [
+        'enabled' => false,
+        'default_provider' => 'twilio', // Options: 'twilio', 'custom'
+        'providers' => [
+            'twilio' => [
+                'sid' => env('TWILIO_SID'),
+                'token' => env('TWILIO_TOKEN'),
+                'from' => env('TWILIO_FROM'),
+            ],
+            'custom' => [
+                // Define custom SMS provider settings here
+            ],
+        ],
+        'code_length' => 6,
+        'code_lifetime' => 10, // minutes
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Email Two-Factor Authentication
+    |--------------------------------------------------------------------------
+    |
+    | This configuration allows you to enable and configure email-based two-factor
+    | authentication. You can specify the default email provider and its settings.
+    |
+    */
+
+    'email' => [
+        'enabled' => false,
+        'default_provider' => 'smtp', // Options: 'smtp', 'mailgun', 'custom'
+        'providers' => [
+            'smtp' => [
+                // Uses Laravel's default mail configuration
+            ],
+            'mailgun' => [
+                'domain' => env('MAILGUN_DOMAIN'),
+                'secret' => env('MAILGUN_SECRET'),
+            ],
+            'custom' => [
+                // Define custom email provider settings here
+            ],
+        ],
+        'code_length' => 6,
+        'code_lifetime' => 10, // minutes
+    ],
 ];
