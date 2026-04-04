@@ -63,7 +63,7 @@ After installing the package, Laravel will automatically discover the service pr
 ```php
 'providers' => [
     // Other Service Providers
-    Jmrashed\TwoFactorAuth\TwoFactorAuthServiceProvider::class,
+    Jmrashed\TwoFactorAuth\TwoFactorServiceProvider::class,
 ],
 ```
 

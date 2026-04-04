@@ -1,5 +1,20 @@
 # Changelog
 
+## [1.1.0] - 2026-04-04
+
+### Added
+- **Laravel 12 Support**: Added compatibility for Laravel 12.x
+- **PHPUnit Test Suite**: Added basic test infrastructure with PHPUnit and Orchestra Testbench
+- **GitHub Actions CI**: Updated PHP workflow to include test execution
+
+### Changed
+- **Composer Dependencies**: Updated illuminate/* packages to support Laravel 10.*|11.*|12.*
+- **Dev Dependencies**: Added phpunit/phpunit, mockery/mockery, and orchestra/testbench for testing
+- **PHP Version**: Now requires PHP 8.1+
+
+### Fixed
+- **README.md**: Corrected service provider class name from `TwoFactorAuthServiceProvider` to `TwoFactorServiceProvider`
+
 ## [1.0.3] - 2025-01-14
 
 ### Added
