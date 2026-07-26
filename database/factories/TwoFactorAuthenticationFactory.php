@@ -1,9 +1,14 @@
 <?php
+
 /**
  * @author [jmrashed]
+ *
  * @email [jmrashed@mail.com]
+ *
  * @create date 2024-05-23 13:59:42
+ *
  * @modify date 2024-05-23 13:59:42
+ *
  * @desc [ two-factor two factor authentication factory]
  */
 
@@ -25,7 +30,7 @@ class TwoFactorAuthenticationFactory extends Factory
     /**
      * The name of the factory's corresponding model.
      *
-     * @var class-string<\Illuminate\Database\Eloquent\Model>|string
+     * @var class-string<Model>|string
      */
     protected $model = TwoFactorAuthentication::class;
 

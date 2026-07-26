@@ -7,9 +7,9 @@ When integrating the Two-Factor Authentication package into your project, managi
 The migration process is straightforward. After installing the package, navigate to the `database/migrations` directory. You'll find a migration file resembling the following:
 
 ```php
-use Jmrashed\TwoFactorAuth\Models\User;
+use Jmrashed\TwoFactorAuth\Models\TwoFactorAuthentication;
 
-return User::migration();
+return TwoFactorAuthentication::migration();
 ```
 
 Despite its simplicity, this migration setup is fully functional. However, it's designed to be easily customizable to suit your specific needs.
@@ -20,9 +20,9 @@ To include additional columns in the migration, you can leverage a callback with
 
 ```php
 use Illuminate\Database\Schema\Blueprint;
-use Jmrashed\TwoFactorAuth\Models\User;
+use Jmrashed\TwoFactorAuth\Models\TwoFactorAuthentication;
 
-return User::migration(function (Blueprint $table) {
+return TwoFactorAuthentication::migration(function (Blueprint $table) {
     $table->boolean('is_admin')->default(false);
     $table->string('phone_number')->nullable();
 });
@@ -36,9 +36,9 @@ Sometimes, you might need to execute specific logic after the table creation or 
 
 ```php
 use Illuminate\Database\Schema\Blueprint;
-use Jmrashed\TwoFactorAuth\Models\User;
+use Jmrashed\TwoFactorAuth\Models\TwoFactorAuthentication;
 
-return User::migration()
+return TwoFactorAuthentication::migration()
     ->afterUp(function (Blueprint $table) {
         $table->foreignId('organization_id')->constrained('organizations');
     })
@@ -54,50 +54,50 @@ These methods provide hooks for executing additional operations, ensuring seamle
 The migration also supports configuring the morph type for relations. You can specify the morph type as `numeric`, `uuid`, or `ulid`.
 
 ```php
-use Jmrashed\TwoFactorAuth\Models\User;
+use Jmrashed\TwoFactorAuth\Models\TwoFactorAuthentication;
 
-return User::migration()->morphUuid;
+return TwoFactorAuthentication::migration()->morphUuid;
 ```
 
 This customization ensures compatibility with different morph types based on your application's requirements.
 
 ## Custom Table Name
 
-If you prefer a custom table name instead of the default, you can specify it using the `$useTable` static property of the User model.
+If you prefer a custom table name instead of the default (`two_factor_authentications`), you can specify it using the `$useTable` static property of the `TwoFactorAuthentication` model.
 
 ```php
 namespace App\Providers;
 
 use Illuminate\Support\ServiceProvider;
-use Jmrashed\TwoFactorAuth\Models\User as TwoFactorAuthUser;
+use Jmrashed\TwoFactorAuth\Models\TwoFactorAuthentication as TwoFactorAuthModel;
 
 class AppServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
-        TwoFactorAuthUser::$useTable = 'custom_users';
+        TwoFactorAuthModel::$useTable = 'custom_two_factor_authentications';
     }
 }
 ```
 
 This allows you to tailor the table name to better fit your application's conventions.
 
-## Configuring the User Model
+## Configuring the TwoFactorAuthentication Model
 
-Additionally, you can configure the User model's fillable, guarded, hidden, visible, and appended attributes using static properties. These properties are merged with the model's original configuration, providing a flexible customization approach.
+Additionally, you can configure the `TwoFactorAuthentication` model's fillable, guarded, hidden, visible, and appended attributes using static properties. These properties are merged with the model's original configuration, providing a flexible customization approach.
 
 ```php
 use Illuminate\Database\Eloquent\Casts\AsEncrypted;
-use Jmrashed\TwoFactorAuth\Models\User as TwoFactorAuthUser;
+use Jmrashed\TwoFactorAuth\Models\TwoFactorAuthentication as TwoFactorAuthModel;
 
 class AppServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
-        TwoFactorAuthUser::$useCasts = [
+        TwoFactorAuthModel::$useCasts = [
             'phone_number' => AsEncrypted::class,
         ];
-        TwoFactorAuthUser::$useHidden = ['phone_number'];
+        TwoFactorAuthModel::$useHidden = ['phone_number'];
     }
 }
 ```

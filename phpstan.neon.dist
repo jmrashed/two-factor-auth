@@ -1,0 +1,13 @@
+parameters:
+    level: 5
+    paths:
+        - src
+    excludePaths:
+        - src/Console
+    ignoreErrors:
+        # $twoFactorAuth is a dynamic Eloquent relation provided by the TwoFactorAuthentication
+        # trait at runtime; PHPStan can't see through the morphOne() call to resolve it even
+        # with an intersection type on the interface's @property-read docblock.
+        -
+            message: '#Access to an undefined property.*\$twoFactorAuth#'
+            path: src/Http/Controllers/TwoFactorSettingsController.php

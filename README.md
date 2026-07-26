@@ -77,11 +77,16 @@ The package seamlessly integrates a contract to determine whether a user, follow
 
 #### 2. Custom Views and Helper Functions
 
-Included in the package are custom views and helper functions dedicated to managing Two-Factor Authentication (2FA) during login attempts and settings management. These resources facilitate the implementation of 2FA without the need for additional middleware or new guards. However, advanced users have the option to customize the authentication process manually if desired.
+Included in the package are custom views and helper functions dedicated to managing Two-Factor Authentication (2FA) during login attempts and settings management. These resources facilitate the implementation of 2FA without the need for a new guard. However, advanced users have the option to customize the authentication process manually if desired.
 
-#### 3. No Middleware Dependency
+#### 3. Optional Middleware
 
-Unlike some alternatives, this package operates without a dependency on middleware. While it provides a simplified setup, it also allows users the flexibility to configure the authentication process according to their specific requirements, should they choose to do so manually.
+The `Auth2FA` login flow itself doesn't require middleware. But the package does ship two middleware aliases you can opt into for route-level protection:
+
+- **`2fa.enabled`** — blocks a route unless the current user has 2FA turned on.
+- **`2fa.confirm`** — asks an already-logged-in user to re-confirm with a 2FA code before reaching a sensitive route (settings, billing, etc.), remembering the confirmation in the session for a configurable time.
+
+See [docs.md](docs.md#middleware) for usage examples.
 
 #### 4. Extensibility
 
@@ -229,6 +234,36 @@ public function login(Request $request)
 ```
 
 This package enables TOTP authentication using 6 digits codes. No need for external APIs.
+
+### Protecting Routes with Middleware
+
+Beyond the login flow, use the `2fa.enabled` and `2fa.confirm` middleware to gate specific routes:
+
+```php
+// Require 2FA to be turned on before reaching these routes.
+Route::middleware('2fa.enabled')->group(function () {
+    Route::get('/billing', BillingController::class);
+});
+
+// Ask for a fresh 2FA code before reaching these routes, even if already logged in.
+Route::middleware('2fa.confirm')->group(function () {
+    Route::get('/account/danger-zone', DangerZoneController::class);
+});
+```
+
+### Validating Codes Directly
+
+A `totp` validation rule is available for form requests:
+
+```php
+$request->validate(['code' => ['required', 'totp']]);
+```
+
+### Events
+
+The package fires events you can listen for: `TwoFactorEnabled`, `TwoFactorDisabled`, `TwoFactorMethodChanged`, `TwoFactorRecoveryCodesGenerated`, `TwoFactorRecoveryCodesDepleted`, `TwoFactorCodeSent`, `TwoFactorCodeFailed`, and `TwoFactorSafeDeviceAdded`.
+
+See **[docs.md](docs.md)** for the full reference, including the SMS/Email provider abstraction, queueing code delivery, and JSON/API responses.
 
 ## Authors
 

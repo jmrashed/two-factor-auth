@@ -1,9 +1,14 @@
 <?php
+
 /**
  * @author [jmrashed]
+ *
  * @email [jmrashed@mail.com]
+ *
  * @create date 2024-05-23 13:59:42
+ *
  * @modify date 2024-05-23 13:59:42
+ *
  * @desc [ two-factor ]
  */
 
@@ -12,7 +17,6 @@ namespace Jmrashed\TwoFactorAuth\Console;
 use Illuminate\Console\Command;
 use Illuminate\Contracts\Console\Kernel as ConsoleContract;
 use Jmrashed\TwoFactorAuth\TwoFactorServiceProvider;
-use Symfony\Component\Console\Attribute\AsCommand;
 
 /**
  * @internal

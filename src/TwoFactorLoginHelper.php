@@ -2,11 +2,16 @@
 
 /**
  * @author [jmrashed]
+ *
  * @email [jmrashed@mail.com]
+ *
  * @create date 2024-05-23 13:59:42
+ *
  * @modify date 2024-05-23 13:59:42
+ *
  * @desc [ two-factor ]
  */
+
 namespace Jmrashed\TwoFactorAuth;
 
 use Illuminate\Auth\AuthManager;
@@ -18,8 +23,8 @@ use Illuminate\Session\EncryptedStore;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Crypt;
 use InvalidArgumentException;
+use Jmrashed\TwoFactorAuth\Contracts\TwoFactorAuthenticatable;
 use Jmrashed\TwoFactorAuth\Exceptions\InvalidCodeException;
-use function config;
 
 use function array_merge;
 use function redirect;
@@ -154,14 +159,14 @@ class TwoFactorLoginHelper
 
             if ($twoFactorMethod === 'sms' && $this->request->input('action') === 'send_sms_code') {
                 $user = $guard->getLastAttempted();
-                if ($user && $user->sendSmsCode()) {
+                if ($user instanceof TwoFactorAuthenticatable && $user->sendSmsCode()) {
                     session()->flash('status', trans('two-factor::messages.sms_code_sent'));
                 } else {
                     session()->flash('error', trans('two-factor::messages.sms_send_failed'));
                 }
             } elseif ($twoFactorMethod === 'email' && $this->request->input('action') === 'send_email_code') {
                 $user = $guard->getLastAttempted();
-                if ($user && $user->sendEmailCode()) {
+                if ($user instanceof TwoFactorAuthenticatable && $user->sendEmailCode()) {
                     session()->flash('status', trans('two-factor::messages.email_code_sent'));
                 } else {
                     session()->flash('error', trans('two-factor::messages.email_send_failed'));

@@ -60,4 +60,11 @@ return [
 
     'save_settings' => 'Save Settings',
     'invalid_action' => 'Invalid action.',
+
+    'current_password' => 'Current Password',
+    'invalid_password' => 'The provided password is incorrect.',
+    'regenerate_recovery_codes' => 'Regenerate Recovery Codes',
+    'recovery_regenerated' => 'A new set of Recovery Codes has been generated. Your previous codes are no longer valid.',
+    'recovery_regeneration_cooldown' => 'Please wait :minutes minute(s) before regenerating your Recovery Codes again.',
+    'recovery_codes_remaining' => 'Unused Recovery Codes',
 ];

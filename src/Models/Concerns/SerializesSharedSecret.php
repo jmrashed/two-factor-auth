@@ -2,11 +2,16 @@
 
 /**
  * @author [jmrashed]
+ *
  * @email [jmrashed@mail.com]
+ *
  * @create date 2024-05-23 13:59:42
+ *
  * @modify date 2024-05-23 13:59:42
+ *
  * @desc [ two-factor ]
  */
+
 namespace Jmrashed\TwoFactorAuth\Models\Concerns;
 
 use BaconQrCode\Renderer\Image\SvgImageBackEnd;
@@ -49,7 +54,7 @@ trait SerializesSharedSecret
         [$size, $margin] = array_values(config('two-factor.qr_code'));
 
         return (
-            new Writer(new ImageRenderer(new RendererStyle($size, $margin), new SvgImageBackEnd()))
+            new Writer(new ImageRenderer(new RendererStyle($size, $margin), new SvgImageBackEnd))
         )->writeString($this->toUri());
     }
 
@@ -78,7 +83,7 @@ trait SerializesSharedSecret
     }
 
     /**
-     * @inheritDoc
+     * {@inheritDoc}
      */
     public function render(): string
     {

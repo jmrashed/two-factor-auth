@@ -2,11 +2,16 @@
 
 /**
  * @author [jmrashed]
+ *
  * @email [jmrashed@mail.com]
+ *
  * @create date 2024-05-23 13:59:42
+ *
  * @modify date 2024-05-23 13:59:42
+ *
  * @desc [ two-factor ]
  */
+
 namespace Jmrashed\TwoFactorAuth;
 
 use Closure;
@@ -37,7 +42,7 @@ class TwoFactor
     /**
      * Check if the user uses TOTP and has a valid code when login in.
      *
-     * @return \Closure(\Jmrashed\TwoFactorAuth\Contracts\TwoFactorAuthenticatable):bool
+     * @return Closure(TwoFactorAuthenticatable):bool
      */
     public static function hasCode(string $input = '2fa_code', string $safeDeviceInput = 'safe_device'): Closure
     {
@@ -49,11 +54,11 @@ class TwoFactor
     /**
      * Check if the user uses TOTP and has a valid code when login in.
      *
-     * @return \Closure(\Jmrashed\TwoFactorAuth\Contracts\TwoFactorAuthenticatable):bool
+     * @return Closure(TwoFactorAuthenticatable):bool
      */
     public static function hasCodeOrFails(
         string $input = '2fa_code',
-        string $message = null,
+        ?string $message = null,
         string $safeDeviceInput = 'safe_device'
     ): Closure {
         return static function ($user) use ($input, $message, $safeDeviceInput): bool {
@@ -102,6 +107,7 @@ class TwoFactor
                 if ($this->isSafeDevicesEnabled() && $this->wantsToAddDevice()) {
                     $user->addSafeDevice($this->request);
                 }
+
                 return true;
             }
         }

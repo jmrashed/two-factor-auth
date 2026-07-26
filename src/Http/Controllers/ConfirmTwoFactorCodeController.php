@@ -1,13 +1,20 @@
 <?php
+
 /**
  * @author [jmrashed]
+ *
  * @email [jmrashed@mail.com]
+ *
  * @create date 2024-05-23 13:59:42
+ *
  * @modify date 2024-05-23 13:59:42
+ *
  * @desc [ two-factor ]
  */
 
 namespace Jmrashed\TwoFactorAuth\Http\Controllers;
+
+use const INF;
 
 use Illuminate\Contracts\Config\Repository as ConfigContract;
 use Illuminate\Http\JsonResponse;
@@ -19,8 +26,6 @@ use Illuminate\Routing\Controller;
 use function now;
 use function response;
 use function trans;
-
-use const INF;
 
 class ConfirmTwoFactorCodeController extends Controller
 {
@@ -40,8 +45,8 @@ class ConfirmTwoFactorCodeController extends Controller
     {
         $user = $request->user();
         $method = $user->getTwoFactorMethod();
-        
-        return response()->view('two-factor::confirm', compact('method'));
+
+        return response()->view('two-factor::confirm', compact('user', 'method'));
     }
 
     /**
@@ -51,7 +56,7 @@ class ConfirmTwoFactorCodeController extends Controller
     {
         $user = $request->user();
         $method = $user->getTwoFactorMethod();
-        
+
         $sent = match ($method) {
             'sms' => $user->sendSmsCode(),
             'email' => $user->sendEmailCode(),
@@ -72,22 +77,22 @@ class ConfirmTwoFactorCodeController extends Controller
     {
         $user = $request->user();
         $method = $user->getTwoFactorMethod();
-        
+
         $request->validate([
             '2fa_code' => 'required|string',
-            'method' => 'sometimes|string|in:totp,sms,email'
+            'method' => 'sometimes|string|in:totp,sms,email',
         ]);
 
         $code = $request->input('2fa_code');
         $requestedMethod = $request->input('method', $method);
-        
+
         $isValid = match ($requestedMethod) {
             'totp' => $user->validateTwoFactorCode($code),
             'sms', 'email' => $user->validateAlternativeTwoFactorCode($code, $requestedMethod),
             default => false,
         };
 
-        if (!$isValid) {
+        if (! $isValid) {
             return $request->wantsJson()
                 ? response()->json(['error' => 'Invalid 2FA code'], 422)
                 : back()->withErrors(['2fa_code' => 'Invalid 2FA code']);
