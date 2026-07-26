@@ -1,5 +1,36 @@
 # Changelog
 
+## [1.1.1] - 2026-07-26
+
+### Fixed
+- **Critical**: `2fa.enabled`/`2fa.confirm` middleware checked `instanceof` against an undefined class, so 2FA enforcement silently never triggered
+- **Critical**: Login-challenge routes (`ConfirmTwoFactorCodeController`) were never registered, making that flow unreachable
+- **Critical**: Settings page QR code rendering used a nonexistent BaconQrCode class, fatally erroring for any TOTP-enabled user
+- **Critical**: Enabling SMS/Email 2FA before TOTP caused a NOT NULL DB constraint violation
+- `disable_sms` passed `null` to a non-nullable `setPhoneNumber(string $phoneNumber)`, causing a `TypeError`
+- Removed a duplicate migration that collided with an existing one on `php artisan migrate`
+- CI lock file resolved PHP 8.2+-only dependencies despite the package declaring PHP 8.1+ support
+
+### Security
+- Email 2FA codes moved from indefinite plaintext DB storage to expiring, cache-backed storage (matching SMS)
+- Added password re-confirmation before disabling 2FA or regenerating recovery codes
+- Added rate limiting to the 2FA settings update route
+- Added E.164 phone number validation for SMS 2FA
+- SMS/Email send failures are now logged instead of silently swallowed
+
+### Added
+- Real `SmsProvider`/`EmailProvider` interfaces with Twilio/SMTP/Mailgun implementations and a working `custom` provider slot
+- Optional queueing of SMS/Email delivery (`two-factor.sms.queue` / `two-factor.email.queue`)
+- New events: `TwoFactorCodeSent`, `TwoFactorCodeFailed`, `TwoFactorSafeDeviceAdded`, `TwoFactorMethodChanged`
+- JSON/API responses from `TwoFactorSettingsController` for SPA/mobile consumers
+- Recovery code regeneration cooldown
+- Spanish (`es`) translation
+- Real test suite (20 tests), PHPStan and Laravel Pint wired into CI
+
+### Changed
+- `docs.md` and `MIGRATIONS.md` corrected (previously empty / referencing a nonexistent `Models\User` class)
+- README corrected to describe the middleware the package actually ships
+
 ## [1.1.0] - 2026-04-04
 
 ### Added
