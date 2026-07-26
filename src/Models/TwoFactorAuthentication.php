@@ -2,21 +2,30 @@
 
 /**
  * @author [jmrashed]
+ *
  * @email [jmrashed@mail.com]
+ *
  * @create date 2024-05-23 13:59:42
+ *
  * @modify date 2024-05-23 13:59:42
+ *
  * @desc [ two-factor ]
  */
+
 namespace Jmrashed\TwoFactorAuth\Models;
 
 use Database\Factories\Jmrashed\TwoFactorAuth\TwoFactorAuthenticationFactory;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
-use Laragear\MetaModel\CustomizableModel;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
+use Jmrashed\TwoFactorAuth\Contracts\TwoFactorAuthenticatable;
 use Jmrashed\TwoFactorAuth\Contracts\TwoFactorTotp;
 use Jmrashed\TwoFactorAuth\Migrations\TwoFactorAuthenticationMigration;
+use Laragear\MetaModel\CustomizableModel;
 use ParagonIE\ConstantTime\Base32;
 
 use function array_merge;
@@ -26,10 +35,10 @@ use function random_bytes;
 use function strtolower;
 
 /**
- * @mixin \Illuminate\Database\Eloquent\Builder
+ * @mixin Builder
  *
  * @property-read int $id
- * @property-read null|\Jmrashed\TwoFactorAuth\Contracts\TwoFactorAuthenticatable $authenticatable
+ * @property-read null|TwoFactorAuthenticatable $authenticatable
  * @property string $shared_secret
  * @property string $label
  * @property int $digits
@@ -37,12 +46,12 @@ use function strtolower;
  * @property int $window
  * @property string $algorithm
  * @property array $totp_config
- * @property null|\Illuminate\Support\Collection $recovery_codes
- * @property null|\Illuminate\Support\Collection $safe_devices
- * @property null|\Illuminate\Support\Carbon|\DateTime $enabled_at
- * @property null|\Illuminate\Support\Carbon|\DateTime $recovery_codes_generated_at
- * @property null|\Illuminate\Support\Carbon|\DateTime $updated_at
- * @property null|\Illuminate\Support\Carbon|\DateTime $created_at
+ * @property null|Collection $recovery_codes
+ * @property null|Collection $safe_devices
+ * @property null|Carbon|\DateTime $enabled_at
+ * @property null|Carbon|\DateTime $recovery_codes_generated_at
+ * @property null|Carbon|\DateTime $updated_at
+ * @property null|Carbon|\DateTime $created_at
  *
  * @method static \Database\Factories\Jmrashed\TwoFactorAuth\TwoFactorAuthenticationFactory<static> factory($count = null, $state = [])
  */
@@ -52,8 +61,8 @@ class TwoFactorAuthentication extends Model implements TwoFactorTotp
     use Concerns\HandlesRecoveryCodes;
     use Concerns\HandlesSafeDevices;
     use Concerns\SerializesSharedSecret;
-    use HasFactory;
     use CustomizableModel;
+    use HasFactory;
 
     /**
      * The attributes that should be cast to native types.
@@ -71,6 +80,10 @@ class TwoFactorAuthentication extends Model implements TwoFactorTotp
         'recovery_codes_generated_at' => 'datetime',
         'phone_number_verified_at' => 'datetime',
         'email_2fa_enabled' => 'boolean',
+        // The email OTP is no longer written to this column (it now lives in the
+        // cache with a TTL, see TwoFactorAuthentication::sendEmailCode()), but the
+        // cast is kept for defense-in-depth against any legacy/leftover values.
+        'email_2fa_code' => 'encrypted',
     ];
 
     /**
@@ -80,15 +93,15 @@ class TwoFactorAuthentication extends Model implements TwoFactorTotp
      */
     protected $fillable = [
         'digits', 'seconds', 'window', 'algorithm', 'method',
-        'phone_number', 'email_2fa_enabled'
+        'phone_number', 'email_2fa_enabled',
     ];
 
     /**
-     * @inheritDoc
+     * {@inheritDoc}
      */
     protected static function newFactory(): Factory
     {
-        return new TwoFactorAuthenticationFactory();
+        return new TwoFactorAuthenticationFactory;
     }
 
     /**
@@ -163,7 +176,7 @@ class TwoFactorAuthentication extends Model implements TwoFactorTotp
     }
 
     /**
-     * @inheritDoc
+     * {@inheritDoc}
      */
     protected static function migrationClass(): string
     {

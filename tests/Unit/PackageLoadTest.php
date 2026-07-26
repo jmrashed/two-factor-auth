@@ -2,29 +2,28 @@
 
 namespace Jmrashed\TwoFactorAuth\Tests\Unit;
 
-use Orchestra\Testbench\TestCase;
-use Jmrashed\TwoFactorAuth\TwoFactorServiceProvider;
 use Jmrashed\TwoFactorAuth\Facades\Auth2FA;
+use Jmrashed\TwoFactorAuth\Tests\TestCase;
+use Jmrashed\TwoFactorAuth\TwoFactorLoginHelper;
 
 class PackageLoadTest extends TestCase
 {
-    protected function getPackageProviders($app): array
+    public function test_package_service_provider_registers_routes(): void
     {
-        return [TwoFactorServiceProvider::class];
+        $this->assertTrue($this->app['router']->has('two-factor.settings'));
+        $this->assertTrue($this->app['router']->has('two-factor.settings.update'));
+        $this->assertTrue($this->app['router']->has('2fa.confirm'));
+        $this->assertTrue($this->app['router']->has('2fa.notice'));
     }
 
-    protected function getFacadeAccessor(): string
+    public function test_facade_resolves_to_login_helper(): void
     {
-        return Auth2FA::class;
+        $this->assertInstanceOf(TwoFactorLoginHelper::class, Auth2FA::getFacadeRoot());
     }
 
-    public function test_package_service_provider_can_be_registered(): void
+    public function test_config_is_merged(): void
     {
-        $this->assertTrue(true);
-    }
-
-    public function test_facade_can_be_resolved(): void
-    {
-        $this->assertTrue(true);
+        $this->assertIsArray(config('two-factor'));
+        $this->assertSame(6, config('two-factor.totp.digits'));
     }
 }

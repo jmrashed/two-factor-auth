@@ -1,2 +1,5 @@
 task.md
 vendor
+.phpunit.result.cache
+build/
+coverage/

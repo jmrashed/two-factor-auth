@@ -2,11 +2,16 @@
 
 /**
  * @author [jmrashed]
+ *
  * @email [jmrashed@mail.com]
+ *
  * @create date 2024-05-23 13:59:42
+ *
  * @modify date 2024-05-23 13:59:42
+ *
  * @desc [ two-factor ]
  */
+
 namespace Jmrashed\TwoFactorAuth;
 
 use Illuminate\Contracts\Foundation\Application;
@@ -22,8 +27,11 @@ class TwoFactorServiceProvider extends ServiceProvider
     use BootHelpers;
 
     public const CONFIG = __DIR__.'/../config/two-factor.php';
+
     public const VIEWS = __DIR__.'/../resources/views';
+
     public const LANG = __DIR__.'/../lang';
+
     public const MIGRATIONS = __DIR__.'/../database/migrations';
 
     /**
@@ -70,7 +78,19 @@ class TwoFactorServiceProvider extends ServiceProvider
             Route::get('/two-factor-settings', [Http\Controllers\TwoFactorSettingsController::class, 'showSettings'])
                 ->name('two-factor.settings');
             Route::put('/two-factor-settings', [Http\Controllers\TwoFactorSettingsController::class, 'updateSettings'])
+                ->middleware('throttle:20,1')
                 ->name('two-factor.settings.update');
+
+            Route::get('/two-factor-confirm', [Http\Controllers\ConfirmTwoFactorCodeController::class, 'form'])
+                ->name('2fa.confirm');
+            Route::post('/two-factor-confirm/send-code', [Http\Controllers\ConfirmTwoFactorCodeController::class, 'sendCode'])
+                ->name('2fa.confirm.send-code');
+            Route::post('/two-factor-confirm', [Http\Controllers\ConfirmTwoFactorCodeController::class, 'confirm'])
+                ->name('2fa.confirm.store');
+
+            Route::get('/two-factor-notice', static function () {
+                return view('two-factor::notice', ['url' => route('two-factor.settings')]);
+            })->name('2fa.notice');
         });
 
         if ($this->app->runningInConsole()) {
@@ -107,11 +127,11 @@ class TwoFactorServiceProvider extends ServiceProvider
         $files = Collection::make(File::files(static::MIGRATIONS))
             ->mapWithKeys(fn (\SplFileInfo $file): array => [
                 $file->getRealPath() => Str::of($file->getFileName())
-                        ->after('0000_00_00_000000')
-                        ->prepend($now->addSecond()->format('Y_m_d_His'))
-                        ->prepend('/')
-                        ->prepend($this->app->databasePath('migrations'))
-                        ->toString(),
+                    ->after('0000_00_00_000000')
+                    ->prepend($now->addSecond()->format('Y_m_d_His'))
+                    ->prepend('/')
+                    ->prepend($this->app->databasePath('migrations'))
+                    ->toString(),
             ]);
 
         $this->publishes($files->toArray(), 'migrations');

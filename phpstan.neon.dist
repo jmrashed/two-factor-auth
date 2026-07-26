@@ -1,0 +1,13 @@
+parameters:
+    level: 5
+    paths:
+        - src
+    excludePaths:
+        - src/Console
+    ignoreErrors:
+        # The model docblock types this property as `Carbon|DateTime` for generality, but the
+        # "datetime" cast in TwoFactorAuthentication::$casts always produces a Carbon instance
+        # at runtime, so ->copy() is always safe here despite the wider docblock type.
+        -
+            message: '#Call to an undefined method DateTime::copy\(\)#'
+            path: src/Http/Controllers/TwoFactorSettingsController.php

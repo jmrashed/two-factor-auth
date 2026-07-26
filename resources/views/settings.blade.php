@@ -15,6 +15,17 @@
         </div>
     @endif
 
+    @if (session('recovery_codes'))
+        <div class="alert alert-warning">
+            <strong>{{ trans('two-factor::messages.recovery_code.generated') }}</strong>
+            <ul class="mb-0">
+                @foreach (session('recovery_codes') as $recoveryCode)
+                    <li><code>{{ $recoveryCode }}</code></li>
+                @endforeach
+            </ul>
+        </div>
+    @endif
+
     <form method="POST" action="{{ route('two-factor.settings.update') }}">
         @csrf
         @method('PUT')
@@ -31,7 +42,7 @@
             @if ($user->hasTwoFactorEnabled() && $user->getTwoFactorMethod() === 'totp')
                 <div class="mt-3 text-center">
                     <p>{{ trans('two-factor::messages.scan_qr_code') }}</p>
-                    <img src="{{ $qrCodeSvg }}" alt="QR Code">
+                    {!! $qrCodeSvg !!}
                     <p class="mt-2">{{ trans('two-factor::messages.secret_key') }}: <strong>{{ $user->twoFactorAuth->shared_secret }}</strong></p>
                     <div class="form-group">
                         <label for="totp_code">{{ trans('two-factor::messages.verify_code') }}</label>
@@ -43,7 +54,14 @@
                         @enderror
                     </div>
                     <button type="submit" name="action" value="confirm_totp" class="btn btn-primary mt-2">{{ trans('two-factor::messages.confirm_totp') }}</button>
+
+                    @include('two-factor::partials.current-password', ['suffix' => '_totp'])
                     <button type="submit" name="action" value="disable_totp" class="btn btn-danger mt-2">{{ trans('two-factor::messages.disable_totp') }}</button>
+
+                    <hr>
+                    <p class="mt-2">{{ trans('two-factor::messages.recovery_codes_remaining') }}: {{ $user->getRecoveryCodes()->count() }}</p>
+                    @include('two-factor::partials.current-password', ['suffix' => '_recovery'])
+                    <button type="submit" name="action" value="regenerate_recovery_codes" class="btn btn-warning mt-2">{{ trans('two-factor::messages.regenerate_recovery_codes') }}</button>
                 </div>
             @else
                 <div class="mt-3 text-center">
@@ -87,6 +105,7 @@
                     <button type="submit" name="action" value="verify_sms" class="btn btn-primary mt-2">{{ trans('two-factor::messages.verify_sms') }}</button>
                 @elseif ($user->getTwoFactorMethod() === 'sms' && $user->isPhoneNumberVerified())
                     <p class="text-success">{{ trans('two-factor::messages.phone_verified') }}</p>
+                    @include('two-factor::partials.current-password', ['suffix' => '_sms'])
                     <button type="submit" name="action" value="disable_sms" class="btn btn-danger mt-2">{{ trans('two-factor::messages.disable_sms') }}</button>
                 @else
                     <button type="submit" name="action" value="enable_sms" class="btn btn-primary mt-2">{{ trans('two-factor::messages.enable_sms') }}</button>
@@ -118,6 +137,7 @@
                         @enderror
                     </div>
                     <button type="submit" name="action" value="verify_email" class="btn btn-primary mt-2">{{ trans('two-factor::messages.verify_email') }}</button>
+                    @include('two-factor::partials.current-password', ['suffix' => '_email'])
                     <button type="submit" name="action" value="disable_email" class="btn btn-danger mt-2">{{ trans('two-factor::messages.disable_email') }}</button>
                 @else
                     <button type="submit" name="action" value="enable_email" class="btn btn-primary mt-2">{{ trans('two-factor::messages.enable_email') }}</button>

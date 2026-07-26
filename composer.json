@@ -42,7 +42,9 @@
     "require-dev": {
         "phpunit/phpunit": "^10.0",
         "mockery/mockery": "^1.5",
-        "orchestra/testbench": "^8.0|^9.0"
+        "orchestra/testbench": "^8.0|^9.0",
+        "phpstan/phpstan": "^1.11",
+        "laravel/pint": "^1.16"
     },
     "autoload": {
         "psr-4": {
@@ -52,15 +54,20 @@
     },
     "autoload-dev": {
         "psr-4": {
-            "Tests\\": "tests"
+            "Jmrashed\\TwoFactorAuth\\Tests\\": "tests"
         }
     },
     "scripts": {
         "test": "vendor/bin/phpunit --coverage-clover build/logs/clover.xml",
-        "test-coverage": "vendor/bin/phpunit --coverage-html coverage"
+        "test-coverage": "vendor/bin/phpunit --coverage-html coverage",
+        "stan": "vendor/bin/phpstan analyse",
+        "pint": "vendor/bin/pint"
     },
     "config": {
-        "sort-packages": true
+        "sort-packages": true,
+        "platform": {
+            "php": "8.1.0"
+        }
     },
     "extra": {
         "laravel": {

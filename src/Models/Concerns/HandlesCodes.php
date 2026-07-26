@@ -1,9 +1,14 @@
 <?php
+
 /**
  * @author [jmrashed]
+ *
  * @email [jmrashed@mail.com]
+ *
  * @create date 2024-05-23 13:59:42
+ *
  * @modify date 2024-05-23 13:59:42
+ *
  * @desc [ two-factor ]
  */
 
@@ -49,7 +54,7 @@ trait HandlesCodes
     /**
      * Returns the Cache Store to use.
      */
-    protected function useCacheStore(string $store = null): Repository
+    protected function useCacheStore(?string $store = null): Repository
     {
         return cache()->store($store);
     }
@@ -57,7 +62,7 @@ trait HandlesCodes
     /**
      * Validates a given code, optionally for a given timestamp and future window.
      */
-    public function validateCode(string $code, DateTimeInterface|int|string $at = 'now', int $window = null): bool
+    public function validateCode(string $code, DateTimeInterface|int|string $at = 'now', ?int $window = null): bool
     {
         if ($this->codeHasBeenUsed($code)) {
             return false;
@@ -137,7 +142,7 @@ trait HandlesCodes
     /**
      * Get the timestamp from a given elapsed "periods" of seconds.
      */
-    protected function getTimestampFromPeriod(DatetimeInterface|int|string|null $at, int $period): int
+    protected function getTimestampFromPeriod(DateTimeInterface|int|string|null $at, int $period): int
     {
         $periods = ($this->parseTimestamp($at) / $this->seconds) + $period;
 
@@ -147,7 +152,7 @@ trait HandlesCodes
     /**
      * Normalizes the Timestamp from a string, integer or object.
      */
-    protected function parseTimestamp(DatetimeInterface|int|string $at): int
+    protected function parseTimestamp(DateTimeInterface|int|string $at): int
     {
         return is_int($at) ? $at : Carbon::parse($at)->getTimestamp();
     }

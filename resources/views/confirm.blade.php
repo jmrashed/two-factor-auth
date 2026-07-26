@@ -25,10 +25,10 @@
                 <label for="two_factor_method" class="sr-only">{{ trans('two-factor::messages.two_factor_method') }}</label>
                 <select name="two_factor_method" id="two_factor_method" class="form-control form-control-lg mb-3" onchange="this.form.submit()">
                     <option value="totp" {{ $twoFactorMethod === 'totp' ? 'selected' : '' }}>{{ trans('two-factor::messages.totp_method') }}</option>
-                    @if (config('two-factor.sms.enabled') && $user->phone_number_verified_at)
+                    @if (config('two-factor.sms.enabled') && $user->twoFactorAuth->phone_number_verified_at)
                         <option value="sms" {{ $twoFactorMethod === 'sms' ? 'selected' : '' }}>{{ trans('two-factor::messages.sms_method') }}</option>
                     @endif
-                    @if (config('two-factor.email.enabled') && $user->email_2fa_enabled)
+                    @if (config('two-factor.email.enabled') && $user->isEmailTwoFactorEnabled())
                         <option value="email" {{ $twoFactorMethod === 'email' ? 'selected' : '' }}>{{ trans('two-factor::messages.email_method') }}</option>
                     @endif
                 </select>

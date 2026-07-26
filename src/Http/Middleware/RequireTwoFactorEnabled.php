@@ -1,9 +1,14 @@
 <?php
+
 /**
  * @author [jmrashed]
+ *
  * @email [jmrashed@mail.com]
+ *
  * @create date 2024-05-23 13:59:42
+ *
  * @modify date 2024-05-23 13:59:42
+ *
  * @desc [ two-factor ]
  */
 
@@ -25,7 +30,7 @@ class RequireTwoFactorEnabled
     {
         $user = $request->user();
 
-        if (! $user instanceof TwoFactor || $user->hasTwoFactorEnabled()) {
+        if (! $user instanceof TwoFactorAuth || $user->hasTwoFactorEnabled()) {
             return $next($request);
         }
 

@@ -1,9 +1,18 @@
 <?php
+
+use Jmrashed\TwoFactorAuth\Providers\MailgunEmailProvider;
+use Jmrashed\TwoFactorAuth\Providers\SmtpEmailProvider;
+use Jmrashed\TwoFactorAuth\Providers\TwilioSmsProvider;
+
 /**
  * @author [jmrashed]
+ *
  * @email [jmrashed@mail.com]
+ *
  * @create date 2024-05-23 13:59:42
+ *
  * @modify date 2024-05-23 13:59:42
+ *
  * @desc [two-factor configuration file]
  */
 return [
@@ -163,14 +172,22 @@ return [
     'sms' => [
         'enabled' => false,
         'default_provider' => 'twilio', // Options: 'twilio', 'custom'
+
+        // Whether sending the SMS should be pushed to the queue instead of
+        // blocking the request. Requires a working queue connection; when
+        // "sync" (Laravel's default), behaves exactly like sending inline.
+        'queue' => env('TWO_FACTOR_SMS_QUEUE', false),
+
         'providers' => [
             'twilio' => [
+                'class' => TwilioSmsProvider::class,
                 'sid' => env('TWILIO_SID'),
                 'token' => env('TWILIO_TOKEN'),
                 'from' => env('TWILIO_FROM'),
             ],
             'custom' => [
-                // Define custom SMS provider settings here
+                // Set "class" to a FQCN implementing Jmrashed\TwoFactorAuth\Contracts\SmsProvider.
+                'class' => null,
             ],
         ],
         'code_length' => 6,
@@ -190,19 +207,41 @@ return [
     'email' => [
         'enabled' => false,
         'default_provider' => 'smtp', // Options: 'smtp', 'mailgun', 'custom'
+
+        // Whether sending the email should be pushed to the queue instead of
+        // blocking the request. Requires a working queue connection; when
+        // "sync" (Laravel's default), behaves exactly like sending inline.
+        'queue' => env('TWO_FACTOR_EMAIL_QUEUE', false),
+
         'providers' => [
             'smtp' => [
+                'class' => SmtpEmailProvider::class,
                 // Uses Laravel's default mail configuration
             ],
             'mailgun' => [
+                'class' => MailgunEmailProvider::class,
                 'domain' => env('MAILGUN_DOMAIN'),
                 'secret' => env('MAILGUN_SECRET'),
             ],
             'custom' => [
-                // Define custom email provider settings here
+                // Set "class" to a FQCN implementing Jmrashed\TwoFactorAuth\Contracts\EmailProvider.
+                'class' => null,
             ],
         ],
         'code_length' => 6,
         'code_lifetime' => 10, // minutes
     ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Recovery Code Regeneration Cooldown
+    |--------------------------------------------------------------------------
+    |
+    | To prevent an attacker with a hijacked session from silently rotating
+    | (and thus invalidating) a user's recovery codes over and over, we
+    | throttle how often they can be regenerated. Set in minutes.
+    |
+    */
+
+    'recovery_regeneration_cooldown' => 5,
 ];

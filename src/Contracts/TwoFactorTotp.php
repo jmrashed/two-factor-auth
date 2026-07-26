@@ -1,9 +1,14 @@
 <?php
+
 /**
  * @author [jmrashed]
+ *
  * @email [jmrashed@mail.com]
+ *
  * @create date 2024-05-23 13:59:42
+ *
  * @modify date 2024-05-23 13:59:42
+ *
  * @desc [ two-factor ]
  */
 
@@ -18,7 +23,7 @@ interface TwoFactorTotp extends Renderable, Stringable
     /**
      * Validates a given code, optionally for a given timestamp and future window.
      */
-    public function validateCode(string $code, DateTimeInterface|int|string $at = 'now', int $window = null): bool;
+    public function validateCode(string $code, DateTimeInterface|int|string $at = 'now', ?int $window = null): bool;
 
     /**
      * Creates a Code for a given timestamp, optionally by a given period offset.

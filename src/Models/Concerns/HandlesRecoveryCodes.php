@@ -1,9 +1,14 @@
 <?php
+
 /**
  * @author [jmrashed]
+ *
  * @email [jmrashed@mail.com]
+ *
  * @create date 2024-05-23 13:59:42
+ *
  * @modify date 2024-05-23 13:59:42
+ *
  * @desc [ two-factor ]
  */
 
@@ -21,7 +26,7 @@ trait HandlesRecoveryCodes
     /**
      * The custom generator to make recovery codes.
      *
-     * @var (callable(int, int, int): \Illuminate\Support\Collection<int, int|string>)|null
+     * @var (callable(int, int, int): Collection<int, int|string>)|null
      */
     protected static $generator = null;
 
@@ -66,9 +71,9 @@ trait HandlesRecoveryCodes
     /**
      * Registers a callback to generate recovery codes.
      *
-     * @param  (callable(int $length, int $iteration, int $amount): \Illuminate\Support\Collection<int, int|string>)|null  $callback
+     * @param  (callable(int $length, int $iteration, int $amount): Collection<int, int|string>)|null  $callback
      */
-    public static function generateRecoveryCodesUsing(callable $callback = null): void
+    public static function generateRecoveryCodesUsing(?callable $callback = null): void
     {
         static::$generator = $callback;
     }

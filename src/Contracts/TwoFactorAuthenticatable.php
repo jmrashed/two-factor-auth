@@ -1,9 +1,14 @@
 <?php
+
 /**
  * @author [jmrashed]
+ *
  * @email [jmrashed@mail.com]
+ *
  * @create date 2024-05-23 13:59:42
+ *
  * @modify date 2024-05-23 13:59:42
+ *
  * @desc [ two-factor ]
  */
 
@@ -12,7 +17,11 @@ namespace Jmrashed\TwoFactorAuth\Contracts;
 use DateTimeInterface;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
+use Jmrashed\TwoFactorAuth\Models\TwoFactorAuthentication;
 
+/**
+ * @property-read TwoFactorAuthentication $twoFactorAuth
+ */
 interface TwoFactorAuthenticatable
 {
     /**

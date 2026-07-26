@@ -1,9 +1,14 @@
 <?php
+
 /**
  * @author [jmrashed]
+ *
  * @email [jmrashed@mail.com]
+ *
  * @create date 2024-05-23 13:59:42
+ *
  * @modify date 2024-05-23 13:59:42
+ *
  * @desc [ two-factor ]
  */
 
@@ -22,14 +27,12 @@ use Jmrashed\TwoFactorAuth\TwoFactorLoginHelper;
  * @method static \Jmrashed\TwoFactorAuth\TwoFactorLoginHelper guard(string $guard)
  * @method static \Jmrashed\TwoFactorAuth\TwoFactorLoginHelper redirect(string $route)
  *
- * @see \Jmrashed\TwoFactorAuth\TwoFactorLoginHelper
+ * @see TwoFactorLoginHelper
  */
 class Auth2FA extends Facade
 {
     /**
      * Get the registered name of the component.
-     *
-     * @return string
      */
     protected static function getFacadeAccessor(): string
     {

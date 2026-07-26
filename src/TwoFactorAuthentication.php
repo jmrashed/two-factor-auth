@@ -2,47 +2,47 @@
 
 /**
  * @author [jmrashed]
+ *
  * @email [jmrashed@mail.com]
+ *
  * @create date 2024-05-23 13:59:42
+ *
  * @modify date 2024-05-23 13:59:42
+ *
  * @desc [ two-factor ]
  */
+
 namespace Jmrashed\TwoFactorAuth;
 
 use DateTimeInterface;
 use Illuminate\Database\Eloquent\Relations\MorphOne;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\Mail;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Str;
 use InvalidArgumentException;
+use Jmrashed\TwoFactorAuth\Contracts\EmailProvider;
+use Jmrashed\TwoFactorAuth\Contracts\SmsProvider;
 
+use function app;
 use function collect;
 use function config;
 use function cookie;
 use function event;
 use function now;
-use function rand;
-use function app;
+use function random_int;
 
 /**
- * @property-read \Jmrashed\TwoFactorAuth\Models\TwoFactorAuthentication $twoFactorAuth
+ * @property-read Models\TwoFactorAuthentication $twoFactorAuth
  */
 trait TwoFactorAuthentication
 {
     /**
      * Determines if the last Two-Factor confirmation was bypassed under a Safe Device.
-     *
-     * @var bool
      */
     public bool $wasTwoFactorRecentlyBypassedUnderSafeDevice = false;
 
     /**
      * The currently active two-factor method.
-     *
-     * @var string|null
      */
     public ?string $twoFactorMethod = null;
 
@@ -61,8 +61,15 @@ trait TwoFactorAuthentication
     public function twoFactorAuth(): MorphOne
     {
         return $this->morphOne(Models\TwoFactorAuthentication::class, 'authenticatable')
-            ->withDefault(static function (Models\TwoFactorAuthentication $model): Models\TwoFactorAuthentication {
-                return $model->fill(config('two-factor.totp'));
+            ->withDefault(function (Models\TwoFactorAuthentication $model): Models\TwoFactorAuthentication {
+                // "shared_secret" and "label" are not nullable, and are normally only set
+                // once TOTP is set up via createTwoFactorAuth(). But SMS/Email 2FA can be
+                // enabled without ever touching TOTP, so the default model needs both
+                // regardless, to avoid a NOT NULL constraint violation on first persist.
+                return $model->forceFill(array_merge(config('two-factor.totp'), [
+                    'shared_secret' => Models\TwoFactorAuthentication::generateRandomSecret(),
+                    'label' => $this->twoFactorLabel(),
+                ]));
             });
     }
 
@@ -177,7 +184,7 @@ trait TwoFactorAuthentication
      */
     public function validateTwoFactorCode(?string $code = null, bool $useRecoveryCodes = true): bool
     {
-        return null !== $code
+        return $code !== null
             && $this->hasTwoFactorEnabled()
             && ($this->validateCode($code) || ($useRecoveryCodes && $this->useRecoveryCode($code)));
     }
@@ -268,6 +275,8 @@ trait TwoFactorAuthentication
 
         cookie()->queue($name, $token, $expiration * 1440);
 
+        event(new Events\TwoFactorSafeDeviceAdded($this, $request->ip() ?? ''));
+
         return $token;
     }
 
@@ -348,6 +357,8 @@ trait TwoFactorAuthentication
     {
         $this->twoFactorAuth->method = $method;
         $this->twoFactorAuth->save();
+
+        event(new Events\TwoFactorMethodChanged($this, $method));
     }
 
     /**
@@ -417,16 +428,23 @@ trait TwoFactorAuthentication
      */
     public function sendSmsCode(): bool
     {
-        if (!config('two-factor.sms.enabled') || !$this->twoFactorAuth->phone_number) {
+        if (! config('two-factor.sms.enabled') || ! $this->twoFactorAuth->phone_number) {
             return false;
         }
 
         $code = $this->generateTwoFactorCode('sms');
-        $cacheKey = "2fa_sms_{$this->getKey()}";
-        
-        Cache::put($cacheKey, $code, now()->addMinutes(config('two-factor.sms.code_lifetime', 10)));
 
-        return $this->sendSmsViaProvider($this->twoFactorAuth->phone_number, $code);
+        Cache::put(
+            $this->twoFactorCodeCacheKey('sms'),
+            $code,
+            now()->addMinutes(config('two-factor.sms.code_lifetime', 10))
+        );
+
+        $sent = $this->sendSmsViaProvider($this->twoFactorAuth->phone_number, $code);
+
+        event(new Events\TwoFactorCodeSent($this, 'sms', $sent));
+
+        return $sent;
     }
 
     /**
@@ -434,15 +452,25 @@ trait TwoFactorAuthentication
      */
     public function sendEmailCode(): bool
     {
-        if (!config('two-factor.email.enabled') || !$this->isEmailTwoFactorEnabled()) {
+        if (! config('two-factor.email.enabled') || ! $this->isEmailTwoFactorEnabled()) {
             return false;
         }
 
         $code = $this->generateTwoFactorCode('email');
-        $this->twoFactorAuth->email_2fa_code = $code;
-        $this->twoFactorAuth->save();
 
-        return $this->sendEmailViaProvider($this->getTwoFactorUserIdentifier(), $code);
+        // The code lives only in the cache (with a TTL), never in plaintext
+        // on the model, so it can't be recovered later from a DB dump.
+        Cache::put(
+            $this->twoFactorCodeCacheKey('email'),
+            $code,
+            now()->addMinutes(config('two-factor.email.code_lifetime', 10))
+        );
+
+        $sent = $this->sendEmailViaProvider($this->getTwoFactorUserIdentifier(), $code);
+
+        event(new Events\TwoFactorCodeSent($this, 'email', $sent));
+
+        return $sent;
     }
 
     /**
@@ -450,15 +478,17 @@ trait TwoFactorAuthentication
      */
     public function validateAlternativeTwoFactorCode(string $code, string $method): bool
     {
-        if ($method === 'sms') {
-            return $this->validateSmsCode($code);
+        $valid = match ($method) {
+            'sms' => $this->validateCachedTwoFactorCode('sms', $code),
+            'email' => $this->validateCachedTwoFactorCode('email', $code),
+            default => false,
+        };
+
+        if (! $valid) {
+            event(new Events\TwoFactorCodeFailed($this, $method));
         }
 
-        if ($method === 'email') {
-            return $this->validateEmailCode($code);
-        }
-
-        return false;
+        return $valid;
     }
 
     /**
@@ -466,23 +496,32 @@ trait TwoFactorAuthentication
      */
     protected function generateTwoFactorCode(string $method): string
     {
-        $length = $method === 'sms' 
+        $length = $method === 'sms'
             ? config('two-factor.sms.code_length', 6)
             : config('two-factor.email.code_length', 6);
 
-        return str_pad(rand(0, pow(10, $length) - 1), $length, '0', STR_PAD_LEFT);
+        return str_pad((string) random_int(0, (10 ** $length) - 1), $length, '0', STR_PAD_LEFT);
     }
 
     /**
-     * Validate SMS code.
+     * The cache key used to hold a pending SMS/Email code for this user.
      */
-    protected function validateSmsCode(string $code): bool
+    protected function twoFactorCodeCacheKey(string $method): string
     {
-        $cacheKey = "2fa_sms_{$this->getKey()}";
-        $cachedCode = Cache::get($cacheKey);
+        return "2fa_{$method}_{$this->getKey()}";
+    }
 
-        if ($cachedCode && $cachedCode === $code) {
-            Cache::forget($cacheKey);
+    /**
+     * Validate a cached SMS/Email code, and invalidate it once used.
+     */
+    protected function validateCachedTwoFactorCode(string $method, string $code): bool
+    {
+        $key = $this->twoFactorCodeCacheKey($method);
+        $cachedCode = Cache::get($key);
+
+        if ($cachedCode !== null && hash_equals((string) $cachedCode, $code)) {
+            Cache::forget($key);
+
             return true;
         }
 
@@ -490,117 +529,72 @@ trait TwoFactorAuthentication
     }
 
     /**
-     * Validate email code.
+     * Resolve the configured SMS provider instance, or null if unresolvable.
      */
-    protected function validateEmailCode(string $code): bool
+    protected function resolveSmsProvider(): ?SmsProvider
     {
-        if ($this->twoFactorAuth->email_2fa_code === $code) {
-            $this->twoFactorAuth->email_2fa_code = null;
-            $this->twoFactorAuth->save();
-            return true;
+        $default = config('two-factor.sms.default_provider');
+        $class = config("two-factor.sms.providers.{$default}.class");
+
+        if (! $class || ! is_a($class, SmsProvider::class, true)) {
+            return null;
         }
 
-        return false;
+        return app($class);
     }
 
     /**
-     * Send SMS via configured provider.
+     * Resolve the configured Email provider instance, or null if unresolvable.
+     */
+    protected function resolveEmailProvider(): ?EmailProvider
+    {
+        $default = config('two-factor.email.default_provider');
+        $class = config("two-factor.email.providers.{$default}.class");
+
+        if (! $class || ! is_a($class, EmailProvider::class, true)) {
+            return null;
+        }
+
+        return app($class);
+    }
+
+    /**
+     * Send SMS via the configured provider, queueing the delivery if configured to do so.
      */
     protected function sendSmsViaProvider(string $phoneNumber, string $code): bool
     {
-        $provider = config('two-factor.sms.default_provider');
+        $provider = $this->resolveSmsProvider();
 
-        if ($provider === 'twilio') {
-            return $this->sendSmsViaTwilio($phoneNumber, $code);
-        }
-
-        return false;
-    }
-
-    /**
-     * Send SMS via Twilio.
-     */
-    protected function sendSmsViaTwilio(string $phoneNumber, string $code): bool
-    {
-        $config = config('two-factor.sms.providers.twilio');
-        
-        if (!$config['sid'] || !$config['token'] || !$config['from']) {
+        if (! $provider) {
             return false;
         }
 
-        try {
-            $response = Http::withBasicAuth($config['sid'], $config['token'])
-                ->asForm()
-                ->post("https://api.twilio.com/2010-04-01/Accounts/{$config['sid']}/Messages.json", [
-                    'From' => $config['from'],
-                    'To' => $phoneNumber,
-                    'Body' => "Your 2FA code is: {$code}"
-                ]);
+        if (config('two-factor.sms.queue', false)) {
+            Jobs\SendTwoFactorSmsCode::dispatch($provider::class, $phoneNumber, $code);
 
-            return $response->successful();
-        } catch (\Exception $e) {
-            return false;
+            return true;
         }
+
+        return $provider->send($phoneNumber, $code);
     }
 
     /**
-     * Send email via configured provider.
+     * Send email via the configured provider, queueing the delivery if configured to do so.
      */
     protected function sendEmailViaProvider(string $email, string $code): bool
     {
-        $provider = config('two-factor.email.default_provider');
+        $provider = $this->resolveEmailProvider();
 
-        if ($provider === 'smtp') {
-            return $this->sendEmailViaSmtp($email, $code);
+        if (! $provider) {
+            return false;
         }
 
-        if ($provider === 'mailgun') {
-            return $this->sendEmailViaMailgun($email, $code);
-        }
+        if (config('two-factor.email.queue', false)) {
+            Jobs\SendTwoFactorEmailCode::dispatch($provider::class, $email, $code);
 
-        return false;
-    }
-
-    /**
-     * Send email via SMTP (Laravel Mail).
-     */
-    protected function sendEmailViaSmtp(string $email, string $code): bool
-    {
-        try {
-            Mail::raw("Your 2FA code is: {$code}", function ($message) use ($email) {
-                $message->to($email)
-                    ->subject('Two-Factor Authentication Code');
-            });
             return true;
-        } catch (\Exception $e) {
-            return false;
-        }
-    }
-
-    /**
-     * Send email via Mailgun.
-     */
-    protected function sendEmailViaMailgun(string $email, string $code): bool
-    {
-        $config = config('two-factor.email.providers.mailgun');
-        
-        if (!$config['domain'] || !$config['secret']) {
-            return false;
         }
 
-        try {
-            $response = Http::withBasicAuth('api', $config['secret'])
-                ->asForm()
-                ->post("https://api.mailgun.net/v3/{$config['domain']}/messages", [
-                    'from' => "noreply@{$config['domain']}",
-                    'to' => $email,
-                    'subject' => 'Two-Factor Authentication Code',
-                    'text' => "Your 2FA code is: {$code}"
-                ]);
-
-            return $response->successful();
-        } catch (\Exception $e) {
-            return false;
-        }
+        return $provider->send($email, $code);
     }
 }
