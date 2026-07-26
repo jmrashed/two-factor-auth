@@ -5,9 +5,9 @@ parameters:
     excludePaths:
         - src/Console
     ignoreErrors:
-        # $twoFactorAuth is a dynamic Eloquent relation provided by the TwoFactorAuthentication
-        # trait at runtime; PHPStan can't see through the morphOne() call to resolve it even
-        # with an intersection type on the interface's @property-read docblock.
+        # The model docblock types this property as `Carbon|DateTime` for generality, but the
+        # "datetime" cast in TwoFactorAuthentication::$casts always produces a Carbon instance
+        # at runtime, so ->copy() is always safe here despite the wider docblock type.
         -
-            message: '#Access to an undefined property.*\$twoFactorAuth#'
+            message: '#Call to an undefined method DateTime::copy\(\)#'
             path: src/Http/Controllers/TwoFactorSettingsController.php
